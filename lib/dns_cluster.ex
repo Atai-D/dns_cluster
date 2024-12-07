@@ -52,13 +52,18 @@ defmodule DNSCluster do
 
     def list_nodes, do: Node.list(:visible)
 
-    def lookup(query, type) when is_binary(query) and type in [:a, :aaaa] do
+    def lookup(query, type, basename) when is_binary(query) and type in [:a, :aaaa] do
       query
       |> String.split()
       |> Enum.reduce([], fn query, acc ->
-        case :inet_res.getbyname(~c"#{query}", type) do
-          {:ok, hostent(h_addr_list: addr_list)} -> addr_list ++ acc
-          {:error, _} -> acc
+        init_length = length(Node.list())
+
+        with {:connect, true} <- {:connect, Node.connect(:"#{basename}@#{query}")},
+             {:length, true} <- {:length, length(Node.list()) != init_length} do
+          Node.disconnect(:"#{basename}@#{query}")
+          [query] ++ acc
+        else
+          _ -> acc
         end
       end)
     end
@@ -92,12 +97,6 @@ defmodule DNSCluster do
 
   @impl true
   def init(opts) do
-    IO.inspect("--------------")
-    IO.inspect("--------------")
-    IO.inspect(opts)
-    IO.inspect("--------------")
-    IO.inspect("--------------")
-
     case Keyword.fetch(opts, :query) do
       {:ok, :ignore} ->
         :ignore
@@ -155,14 +154,6 @@ defmodule DNSCluster do
       |> Enum.filter(fn node_name -> !Enum.member?(node_names, node_name) end)
       |> Task.async_stream(
         fn new_name ->
-          IO.inspect("++++++++++++++")
-          IO.inspect("++++++++++++++")
-          IO.inspect("++++++++++++++")
-          IO.inspect(:"#{new_name}")
-          IO.inspect("++++++++++++++")
-          IO.inspect("++++++++++++++")
-          IO.inspect("++++++++++++++")
-
           if resolver.connect_node(:"#{new_name}") do
             log(state, "#{node()} connected to #{new_name}")
           end
@@ -198,13 +189,13 @@ defmodule DNSCluster do
               {state.basename, query}
           end
 
-        for addr <- resolver.lookup(query, type) do
+        for addr <- resolver.lookup(query, type, basename) do
           {basename, addr}
         end
       end)
     end)
     |> Enum.uniq()
-    |> Enum.map(fn {basename, addr} -> {basename, to_string(:inet.ntoa(addr))} end)
+    |> Enum.map(fn {basename, addr} -> {basename, addr} end)
   end
 
   defp valid_query?(list) do
