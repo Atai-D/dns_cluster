@@ -53,10 +53,14 @@ defmodule DNSCluster do
     def list_nodes, do: Node.list(:visible)
 
     def lookup(query, type) when is_binary(query) and type in [:a, :aaaa] do
-      case :inet_res.getbyname(~c"#{query}", type) do
-        {:ok, hostent(h_addr_list: addr_list)} -> addr_list
-        {:error, _} -> []
-      end
+      query
+      |> String.split()
+      |> Enum.reduce([], fn query, acc ->
+        case :inet_res.getbyname(~c"#{query}", type) do
+          {:ok, hostent(h_addr_list: addr_list)} -> addr_list ++ acc
+          {:error, _} -> acc
+        end
+      end)
     end
   end
 
