@@ -92,6 +92,12 @@ defmodule DNSCluster do
 
   @impl true
   def init(opts) do
+    IO.inspect("--------------")
+    IO.inspect("--------------")
+    IO.inspect(opts)
+    IO.inspect("--------------")
+    IO.inspect("--------------")
+
     case Keyword.fetch(opts, :query) do
       {:ok, :ignore} ->
         :ignore
@@ -149,6 +155,14 @@ defmodule DNSCluster do
       |> Enum.filter(fn node_name -> !Enum.member?(node_names, node_name) end)
       |> Task.async_stream(
         fn new_name ->
+          IO.inspect("++++++++++++++")
+          IO.inspect("++++++++++++++")
+          IO.inspect("++++++++++++++")
+          IO.inspect(:"#{new_name}")
+          IO.inspect("++++++++++++++")
+          IO.inspect("++++++++++++++")
+          IO.inspect("++++++++++++++")
+
           if resolver.connect_node(:"#{new_name}") do
             log(state, "#{node()} connected to #{new_name}")
           end
